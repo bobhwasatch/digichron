@@ -1,0 +1,45 @@
+{
+    "uuid": "d6b86606-24b6-4fb6-bbab-a7e8ef34cd26",
+    "shortName": "DigiChron",
+    "longName": "DigiChron",
+    "companyName": "Bob Hauck",
+    "versionCode": 1,
+    "versionLabel": "1.0.0",
+    "watchapp":
+    {
+        "watchface": false
+    },
+    "resources":
+    {
+        "media":
+        [
+            {
+                "menuIcon": true,
+                "type": "png",
+                "name": "IMAGE_MENU_ICON",
+                "file": "images/icon.png"
+            },
+            {
+                "type": "png",
+                "name": "IMAGE_STATUS_BAR",
+                "file": "images/status_bar_black.png"
+            },
+            {
+                "type": "font",
+                "name": "FONT_ROBOTO_CONDENSED_14",
+                "file": "fonts/Roboto-Condensed.ttf"
+            },
+            {
+                "type": "font",
+                "name": "FONT_ROBOTO_CONDENSED_22",
+                "file": "fonts/Roboto-Condensed.ttf"
+            },
+            {
+                "characterRegex": "[.: 0-9]",
+                "type": "font",
+                "name": "FONT_ROBOTO_BOLD_SUBSET_42",
+                "file": "fonts/Roboto-Bold.ttf"
+            }
+        ]
+    }
+}
