@@ -62,7 +62,7 @@ Button Mappings:
 
 	Stopwatch Face:
 		SELECT		Start, stop, and continue the timing.
-		LONG_SELECT	Reset the stopwatch.
+		LONG-SELECT	Reset the stopwatch.
 		UP		When the timing has been stopped with SELECT,
 				switch between split and lap display.
 
