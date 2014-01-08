@@ -77,6 +77,8 @@ typedef struct _Private
             TimeMS split_time;  /* total delta from start to stop */
             TimeMS lap_time;    /* delta since last stop */
 
+            bool visible;
+
             /* Always add more at the end */
         };
 
@@ -113,16 +115,20 @@ static void timer_handler(void *data)
             if (pvt->timer)
             {
                 app_timer_cancel(pvt->timer);
+                pvt->timer = NULL;
             }
             pvt->timer = app_timer_register(TIMER_INTERVAL_MS,
                                             timer_handler,
                                             pvt);
         }
 
-        /* Round up to the next multiple of 100 ms so that the last digit
-        * in the display doesn't look so random.
-        */
-        display_set_interval(now.sec, now.ms + 100 - (now.ms % 100));
+        if (pvt->visible)
+        {
+            /* Round up to the next multiple of 100 ms so that the last digit
+            * in the display doesn't look so random.
+            */
+            display_set_interval(now.sec, now.ms + 100 - (now.ms % 100));
+        }
     }
 }
 
@@ -225,6 +231,8 @@ static void load_handler(Face *face)
 {
     Private *pvt = (Private *)face->data;
 
+    pvt->visible = true;
+
     switch (pvt->state)
     {
     case STATE_RUN:
@@ -261,7 +269,9 @@ static void unload_handler(Face *face)
         app_timer_cancel(pvt->timer);
         pvt->timer = NULL;
     }
+
     display_clear();
+    pvt->visible = false;
 }
 
 

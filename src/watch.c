@@ -47,6 +47,7 @@ typedef struct _Private
         struct
         {
             bool day_flag;              /* TRUE displays day instead of date */
+            bool visible;
             int force_day_update;       /* Forces day/date update n seconds */
 
             /* Always add more at the end */
@@ -85,11 +86,15 @@ static void load_handler(Face *face)
     display_set_time(tick_time, units_changed, 0);
     display_set_title(face->name);
     pvt->force_day_update = 1;
+    pvt->visible = true;
 }
 
 
 static void unload_handler(Face *face)
 {
+    Private *pvt = (Private *)face->data;
+
+    pvt->visible = false;
     display_clear();
 }
 
@@ -98,28 +103,31 @@ static void update_handler(Face *face, struct tm *tt, TimeUnits uc)
 {
     Private *pvt = (Private *)face->data;
 
-    if ((uc & DAY_UNIT) || pvt->force_day_update == 0)
+    if (pvt->visible)
     {
-        char date_string[10];
-
-        if (pvt->day_flag)
+        if ((uc & DAY_UNIT) || pvt->force_day_update == 0)
         {
-            strftime(date_string, sizeof(date_string), "%a", tt);
+            char date_string[10];
+
+            if (pvt->day_flag)
+            {
+                strftime(date_string, sizeof(date_string), "%a", tt);
+            }
+            else
+            {
+                strftime(date_string, sizeof(date_string), "%b %d", tt);
+            }
+
+            display_set_title(upcase(date_string));
+            pvt->force_day_update = -1;
         }
-        else
+
+        display_set_time(tt, uc & ~DAY_UNIT, 0);
+
+        if (pvt->force_day_update > 0)
         {
-            strftime(date_string, sizeof(date_string), "%b %d", tt);
+            pvt->force_day_update--;
         }
-
-        display_set_title(upcase(date_string));
-        pvt->force_day_update = -1;
-    }
-
-    display_set_time(tt, uc & ~DAY_UNIT, 0);
-
-    if (pvt->force_day_update > 0)
-    {
-        pvt->force_day_update--;
     }
 }
 

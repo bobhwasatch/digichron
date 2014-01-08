@@ -33,7 +33,7 @@
 #include <pebble.h>
 
 
-#define DEBUG   (false)  /* false saves ~2.5K of code/data size */
+#define DEBUG   (true)  /* false saves ~2.5K of code/data size */
 
 #if !DEBUG
 

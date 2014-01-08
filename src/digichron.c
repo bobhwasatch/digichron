@@ -115,9 +115,13 @@ static void update_time(void)
 
 static void handle_second_tick(struct tm *tick_time, TimeUnits units_changed)
 {
-    faces[active.face].face->update_handler(faces[active.face].face,
-                                            tick_time,
-                                            units_changed);
+    int i = 0;
+
+    while (faces[i].face)
+    {
+        faces[i].face->update_handler(faces[i].face, tick_time, units_changed);
+        i++;
+    }
 }
 
 

@@ -76,6 +76,9 @@ typedef struct _Private
             time_t time_interval;       /* how long it is to run */
             time_t time_left;           /* how much us left (for pausing) */
             time_t time_end;            /* when the timer expires */
+            time_t time_now;
+
+            bool visible;
 
             /* Always add more at the end */
         };
@@ -104,19 +107,19 @@ static bool click_sel(Face *face)
     {
     case STATE_START:
         pvt->state = STATE_RUN;
-        pvt->time_start = time(NULL);
+        pvt->time_start = pvt->time_now;
         pvt->time_end = pvt->time_start + pvt->time_interval;
         pvt->time_left = pvt->time_interval;
         break;
 
     case STATE_RUN:
         pvt->state = STATE_STOP;
-        pvt->time_left = pvt->time_left - (time(NULL) - pvt->time_start);
+        pvt->time_left = pvt->time_left - (pvt->time_now - pvt->time_start);
         break;
 
     case STATE_STOP:
         pvt->state = STATE_RUN;
-        pvt->time_start = time(NULL);
+        pvt->time_start = pvt->time_now;
         pvt->time_end = pvt->time_start + pvt->time_left;
         break;
 
@@ -303,7 +306,7 @@ static bool click_dn(Face *face, uint8_t count)
 static void update_handler(Face *face, struct tm *tt, TimeUnits uc)
 {
     Private *pvt = (Private *)face->data;
-    time_t time_remaining = pvt->time_end - time(NULL);
+    time_t time_remaining = pvt->time_end - pvt->time_now++;
     struct tm *time_count = NULL;
 
     switch(pvt->state)
@@ -317,9 +320,12 @@ static void update_handler(Face *face, struct tm *tt, TimeUnits uc)
             vibes_short_pulse();
         }
         time_count = gmtime(&time_remaining);
-        display_set_time(time_count,
-                         HOUR_UNIT | MINUTE_UNIT | SECOND_UNIT,
-                         true);
+        if (pvt->visible)
+        {
+            display_set_time(time_count,
+                             HOUR_UNIT | MINUTE_UNIT | SECOND_UNIT,
+                             true);
+        }
         break;
 
     case STATE_ALERT:
@@ -330,39 +336,12 @@ static void update_handler(Face *face, struct tm *tt, TimeUnits uc)
     case STATE_CLEAR:
         pvt->state = STATE_START;
         time_count = gmtime(&pvt->time_interval);
-        display_set_time(time_count,
-                         HOUR_UNIT | MINUTE_UNIT | SECOND_UNIT,
-                         true);
-        break;
-
-    default:
-        /* ignore */
-        break;
-    }
-}
-
-
-static void timer_handler(void *data)
-{
-    Private *pvt = data;
-    time_t time_remaining = pvt->time_end - time(NULL);
-
-    switch (pvt->state)
-    {
-    case STATE_RUN:
-        if (time_remaining <= 0)
+        if (pvt->visible)
         {
-            pvt->state = STATE_ALERT;
-            time_remaining = 0;
-            display_set_highlight(HL_DATE);
-            vibes_short_pulse();
+            display_set_time(time_count,
+                             HOUR_UNIT | MINUTE_UNIT | SECOND_UNIT,
+                             true);
         }
-        pvt->timer_handle = app_timer_register(1000, timer_handler, pvt);
-        break;
-
-    case STATE_ALERT:
-        vibes_short_pulse();
-        pvt->timer_handle = app_timer_register(1000, timer_handler, pvt);
         break;
 
     default:
@@ -390,16 +369,10 @@ static void load_handler(Face *face)
     time_t time_remaining = 0;
     struct tm *time_count;
 
-    if (pvt->timer_handle)
-    {
-        app_timer_cancel(pvt->timer_handle);
-        pvt->timer_handle = NULL;
-    }
-
     switch (pvt->state)
     {
     case STATE_RUN:
-        time_remaining = pvt->time_end - time(NULL);
+        time_remaining = pvt->time_end - pvt->time_now;
         time_count = gmtime(&time_remaining);
         break;
 
@@ -416,6 +389,7 @@ static void load_handler(Face *face)
         break;
     }
 
+    pvt->visible = true;
     display_set_time(time_count, 0xff, 1);
     display_set_title(face->name);
 }
@@ -425,10 +399,7 @@ static void unload_handler(Face *face)
 {
     Private *pvt = (Private *)face->data;
 
-    if (pvt->state == STATE_RUN)
-    {
-        pvt->timer_handle = app_timer_register(1000, timer_handler, pvt);
-    }
+    pvt->visible = false;
     display_clear();
 }
 
@@ -464,7 +435,10 @@ Face *timer_create(const char *name, uint32_t key)
 
         if (persist_get_size(face->key) == sizeof(Private))
         {
+            Private *pvt = (Private *)face->data;
+
             persist_read_data(face->key, face->data, sizeof(Private));
+            pvt->time_now = time(NULL);
         }
     }
 
