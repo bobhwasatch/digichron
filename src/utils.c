@@ -63,6 +63,25 @@ char *dncase(char *str)
 
 
 /**
+* Adds a - b, puts result in c.
+*****************************************************************************/
+void time_sum(TimeMS *c, TimeMS *a, TimeMS *b)
+{
+    long sec = (long)a->sec + (long)b->sec;
+    long ms = (long)a->ms + (long)b->ms;
+
+    while (ms > 1000)
+    {
+        sec++;
+        ms -= 1000;
+    }
+
+    c->sec = sec;
+    c->ms = ms;
+}
+
+
+/**
 * Subtracts a - b, puts result in c.
 *****************************************************************************/
 void time_diff(TimeMS *c, TimeMS *a, TimeMS *b)

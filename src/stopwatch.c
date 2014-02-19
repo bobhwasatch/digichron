@@ -10,15 +10,28 @@
 *       LAP     Lap mode. A lap time is being displayed.
 *
 * Buttons:
-*       UP      In SPLT or LAP mode, switch to the other mode.
+*       UP      In STW mode:
+*                       Capture the split & lap times and go to SPLIT mode. The
+*                       timing continues in the background.
+*               In SPLT or LAP mode:
+*                       Switch to the other mode.
 *       SEL     In STW mode:
-*                       Starts timing or captures a split.
+*                       Starts timing if not running, otherwise pause timing,
+                        highlight the status, and got to SPLIT mode.
 *               In SPLT or LAP mode:
 *                       Returns to STW mode, resumes updating the display,
-*                       ready to capture another split. Timing continues in
-*                       the background while in SPLT or LAP mode.
+*                       ready to capture another split.
 *       L-SEL   In any mode, resets the stopwatch and stops timing.
 *       DN      Not used, performs the default action.
+*
+*       If SPLIT or LAP mode was entered by clicking UP in STW mode, then the
+*       timing continues in the background (normal split/lap mode). If SPLIT
+*       or lap was entered by pausing timing with the SEL button, then timing
+*       remains paused while in SPLIT or LAP (stopped split/lap mode).
+*
+*       This supports two use cases, one for timing things like races where
+*       you want timing to continue after capturing the last lap, the other
+*       for timing tasks where you want to stop timing in between sessions.
 *
 * @file   stopwatch.c
 *
@@ -50,8 +63,9 @@
 #include "stopwatch.h"
 
 
-#define TIMER_INTERVAL_MS       (200)
-#define MAX_FAST_SEC            (300) /* max time to display hundreths */
+#define TIMER_FAST_MS   (200)
+#define TIMER_SLOW_MS   (1000)
+#define MAX_FAST_SEC    (300) /* max time to display hundreths */
 
 
 typedef enum
@@ -60,6 +74,8 @@ typedef enum
     STATE_RUN,
     STATE_SPLIT,
     STATE_LAP,
+    STATE_STOP_LAP,
+    STATE_STOP_SPLIT,
 }
 State;
 
@@ -74,10 +90,12 @@ typedef struct _Private
 
             TimeMS start_time;  /* starting time */
             TimeMS last_time;   /* saved stop time for calculating laps */
-            TimeMS split_time;  /* total delta from start to stop */
-            TimeMS lap_time;    /* delta since last stop */
+            TimeMS split_time;  /* total delta from start to split */
+            TimeMS lap_time;    /* delta since last split */
 
             bool visible;
+
+            TimeMS stop_time;   /* saved stop time */
 
             /* Always add more at the end */
         };
@@ -108,19 +126,13 @@ static void timer_handler(void *data)
 
     if (pvt->state == STATE_RUN)
     {
+        uint32_t interval;
+
         time_ms(&now.sec, &now.ms);
         time_diff(&now, &now, &pvt->start_time);
-        if (now.sec < MAX_FAST_SEC)
-        {
-            if (pvt->timer)
-            {
-                app_timer_cancel(pvt->timer);
-                pvt->timer = NULL;
-            }
-            pvt->timer = app_timer_register(TIMER_INTERVAL_MS,
-                                            timer_handler,
-                                            pvt);
-        }
+
+        interval = now.sec < MAX_FAST_SEC ? TIMER_FAST_MS : TIMER_SLOW_MS;
+        pvt->timer = app_timer_register(interval,  timer_handler, pvt);
 
         if (pvt->visible)
         {
@@ -148,17 +160,33 @@ static bool click_sel(Face *face)
         break;
 
     case STATE_RUN:
-        pvt->state = STATE_SPLIT;
+        pvt->state = STATE_STOP_SPLIT;
+        time_ms(&pvt->stop_time.sec, &pvt->stop_time.ms);
         calculate_splits(pvt);
         display_set_interval(pvt->split_time.sec, pvt->split_time.ms);
-        display_set_title("SPLT");
+        display_set_title("SPLIT");
+        display_set_highlight(HL_DATE);
         break;
 
+    case STATE_STOP_LAP:
+    case STATE_STOP_SPLIT:
+        {
+            TimeMS now;
+
+            /* Move the start time up by how long we were stopped.
+            */
+            time_ms(&now.sec, &now.ms);
+            time_diff(&now, &now, &pvt->stop_time);
+            time_sum(&pvt->last_time, &now, &pvt->last_time);
+            time_sum(&pvt->start_time, &now, &pvt->start_time);
+        }
+        /* fall thru */
     case STATE_SPLIT:
         /* fall thru */
     case STATE_LAP:
         pvt->state = STATE_RUN;
-        display_set_title("STW");
+        display_set_title(face->name);
+        display_set_highlight(HL_NONE);
         timer_handler(pvt);
         break;
 
@@ -187,7 +215,8 @@ static bool click_long_sel(Face *face)
     pvt->lap_time.ms = 0;
 
     display_set_interval(0, 0);
-    display_set_title("STW");
+    display_set_title(face->name);
+    display_set_highlight(HL_NONE);
     pvt->state = STATE_START;
 
     return true;
@@ -205,6 +234,18 @@ static bool click_up(Face *face, uint8_t count)
         calculate_splits(pvt);
         display_set_interval(pvt->split_time.sec, pvt->split_time.ms);
         display_set_title("SPLT");
+        break;
+
+    case STATE_STOP_LAP:
+        pvt->state = STATE_STOP_SPLIT;
+        display_set_interval(pvt->split_time.sec, pvt->split_time.ms);
+        display_set_title("SPLT");
+        break;
+
+    case STATE_STOP_SPLIT:
+        pvt->state = STATE_STOP_LAP;
+        display_set_interval(pvt->lap_time.sec, pvt->lap_time.ms);
+        display_set_title("LAP");
         break;
 
     case STATE_SPLIT:
@@ -277,7 +318,7 @@ static void unload_handler(Face *face)
 
 static void update_handler(Face *face, struct tm *tt, TimeUnits uc)
 {
-    timer_handler(&face->data);
+    /* nothing to do */
 }
 
 

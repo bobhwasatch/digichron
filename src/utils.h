@@ -93,6 +93,17 @@ char *dncase(char *str);
 
 
 /**
+* Adds a - b, puts result in c.
+*
+* @param a      Pointer to the first addend.
+* @param b      Pointer to the second addend.
+* @param c      Pointer to result, which is allowed to be a or b.
+*
+*****************************************************************************/
+void time_sum(TimeMS *c, TimeMS *a, TimeMS *b);
+
+
+/**
 * Subtracts a - b, puts result in c.
 *
 * @param a      Pointer to the minuend

@@ -74,7 +74,7 @@ typedef struct _Private
 
             time_t time_start;          /* when the timer was started */
             time_t time_interval;       /* how long it is to run */
-            time_t time_left;           /* how much us left (for pausing) */
+            time_t time_left;           /* how much is left (for pausing) */
             time_t time_end;            /* when the timer expires */
             time_t time_now;
 
@@ -107,6 +107,7 @@ static bool click_sel(Face *face)
     {
     case STATE_START:
         pvt->state = STATE_RUN;
+        pvt->time_now = time(NULL);
         pvt->time_start = pvt->time_now;
         pvt->time_end = pvt->time_start + pvt->time_interval;
         pvt->time_left = pvt->time_interval;
@@ -331,7 +332,6 @@ static void update_handler(Face *face, struct tm *tt, TimeUnits uc)
     case STATE_ALERT:
         vibes_short_pulse();
         break;
-
 
     case STATE_CLEAR:
         pvt->state = STATE_START;
