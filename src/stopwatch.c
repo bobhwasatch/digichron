@@ -291,6 +291,18 @@ static void load_handler(Face *face)
         display_set_title("LAP");
         break;
 
+    case STATE_STOP_SPLIT:
+        display_set_interval(pvt->split_time.sec, pvt->split_time.ms);
+        display_set_title("SPLT");
+        display_set_highlight(HL_DATE);
+        break;
+
+    case STATE_STOP_LAP:
+        display_set_interval(pvt->lap_time.sec, pvt->lap_time.ms);
+        display_set_title("LAP");
+        display_set_highlight(HL_DATE);
+        break;
+
     case STATE_START:
         /* fall thru */
     default:
